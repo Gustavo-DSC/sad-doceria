@@ -20,6 +20,12 @@ const barra = x => { const p = 50 + x * 50 / 8; return `--a:${Math.min(50, p)}%;
 const FORCA = ['um pouco', 'um pouco', 'bem', 'bem', 'muito', 'muito', 'extremamente', 'extremamente'];
 const texto = (x, A, B, verbo) => x === 0 ? 'Os dois são iguais' : `${x < 0 ? A : B} é ${FORCA[Math.abs(x) - 1]} ${verbo}`;
 
+// Régua numérica 8…1-0-1…8 abaixo da barra; cada número é clicável (usa data-lado, já tratado no clique)
+const regua = (x, feito) => `<div class="regua" aria-hidden="true">${
+  Array.from({ length: 17 }, (_, i) => i - 8).map(v =>
+    `<button type="button" tabindex="-1" class="regua-n ${v === 0 ? 'zero' : ''} ${feito && v === x ? 'on' : ''}" data-lado="${v}">${Math.abs(v)}</button>`
+  ).join('')}</div>`;
+
 const pares = ids => { const o = []; for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) o.push([ids[i], ids[j]]); return o; };
 const totalPares = e => e.ids ? pares(e.ids).length : 0;
 const feitos = e => e.ids ? pares(e.ids).filter(([A, B]) => (A + '|' + B) in e.J).length : 0;
@@ -34,6 +40,7 @@ function desenharPassos(a, et) {
 function setX(el, x) {
   const a = state.ahp, et = etapas(a), e = et[passo], k = el.dataset.k, [A, B] = k.split('|'), nome = nm(a);
   e.J[k] = x; el.classList.add('feito'); const r = el.querySelector('.pair-range'); r.value = x; r.setAttribute('style', barra(x));
+  el.querySelectorAll('.regua-n').forEach(n => n.classList.toggle('on', +n.dataset.lado === x));
   const [la, lb] = el.querySelectorAll('.lado'); la.classList.toggle('sel', x < 0); lb.classList.toggle('sel', x > 0); la.classList.toggle('eq', x === 0); lb.classList.toggle('eq', x === 0);
   el.querySelector('.duelo-res').textContent = texto(x, nome(A), nome(B), e.crit ? 'melhor' : 'mais importante');
   diagnosticar(a, e); desenharPassos(a, et); save();
@@ -56,12 +63,13 @@ function telaComparar(a, e) {
   const nome = nm(a), crit = e.crit, verbo = crit ? 'melhor' : 'mais importante';
   return `<div class="cab-passo"><span class="tag">${crit ? 'Critério' : 'Critérios'}</span>
     <h3>${crit ? esc(crit.nome) : 'O que pesa mais na sua decisão?'}</h3>
-    <p>${crit ? `Qual doce é melhor em “${esc(crit.nome)}”? Toque em um lado ou deslize a barra.` : 'Toque no critério mais importante de cada par ou deslize a barra.'}</p></div>
+    <p>${crit ? `Qual doce é melhor em “${esc(crit.nome)}”? Toque em um lado, em um número ou deslize a barra.` : 'Toque no critério mais importante de cada par, em um número ou deslize a barra.'}</p></div>
   <div id="cr-badge"></div>
   ${pares(e.ids).map(([A, B]) => { const k = A + '|' + B, feito = k in e.J, x = +e.J[k] || 0; return `<div class="duelo ${feito ? 'feito' : ''}" data-k="${k}">
     <div class="lados"><button class="lado ${x < 0 ? 'sel' : ''} ${feito && x === 0 ? 'eq' : ''}" data-lado="-3">${esc(nome(A))}</button><span class="vs">VS</span>
     <button class="lado ${x > 0 ? 'sel' : ''} ${feito && x === 0 ? 'eq' : ''}" data-lado="3">${esc(nome(B))}</button></div>
     <input type="range" class="pair-range" min="-8" max="8" step="1" value="${x}" style="${barra(x)}" data-par="${k}" aria-label="${esc(nome(A))} contra ${esc(nome(B))}">
+    ${regua(x, feito)}
     <div class="escala"><span>← ${esc(nome(A))} ganha</span><button class="igual" data-lado="0">Igual</button><span>${esc(nome(B))} ganha →</span></div>
     <div class="duelo-res">${feito ? esc(texto(x, nome(A), nome(B), verbo)) : 'Escolha um lado para comparar'}</div><div class="par-flag"></div></div>`; }).join('')}`;
 }
